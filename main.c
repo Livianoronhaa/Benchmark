@@ -2,88 +2,63 @@
 #include <stdlib.h>
 #include <time.h>
 
-void gerar_numeros_aleatorios(const char *nome_arquivo, int quantidade) {
-    FILE *arquivo = fopen(nome_arquivo, "w");
-    if (arquivo == NULL) {
-        perror("Erro ao abrir o arquivo");
+void gerarNumerosAleatorios(const char *nomeArquivo, int quantidade) {
+    FILE *arquivo = fopen(nomeArquivo, "w");
+    if (!arquivo) {
+        perror("Erro ao criar o arquivo");
         exit(EXIT_FAILURE);
     }
 
     srand(time(NULL));
-
-    clock_t tempo_inicial_geracao = clock();
-
     for (int i = 0; i < quantidade; ++i) {
-        fprintf(arquivo, "%d ", rand() % 100 + 1);
+        fprintf(arquivo, "%d ", rand() % 1000 + 1);
     }
-
-    clock_t tempo_final_geracao = clock();
-    printf("Tempo de geração e salvamento: %f segundos\n", (double)(tempo_final_geracao - tempo_inicial_geracao) / CLOCKS_PER_SEC);
 
     fclose(arquivo);
 }
 
-void busca_linear(const int *numeros, int tamanho, int alvo) {
-    clock_t tempo_inicial = clock();
+int buscaLinear(const int *numeros, int tamanho, int alvo, double *duracao) {
+    clock_t inicio = clock();
     for (int i = 0; i < tamanho; ++i) {
         if (numeros[i] == alvo) {
-            clock_t tempo_final = clock();
-            printf("Busca Linear: Índice %d - Tempo decorrido: %f segundos\n", i, (double)(tempo_final - tempo_inicial) / CLOCKS_PER_SEC);
-            return;
+            *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+            return i;
         }
     }
-
-    printf("Busca Linear: Elemento não encontrado\n");
+    *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+    return -1;
 }
 
-void busca_sentinela(const int *numeros, int tamanho, int alvo) {
-    int *temp_numeros = malloc((tamanho + 1) * sizeof(int));
-    if (temp_numeros == NULL) {
-        perror("Erro de alocação de memória");
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < tamanho; ++i) {
-        temp_numeros[i] = numeros[i];
-    }
-    temp_numeros[tamanho] = alvo;
+int buscaSentinela(int *numeros, int tamanho, int alvo, double *duracao) {
+    clock_t inicio = clock();
+    int ultimo = numeros[tamanho - 1];
+    numeros[tamanho - 1] = alvo;
 
     int i = 0;
-    while (temp_numeros[i] != alvo) {
+    while (numeros[i] != alvo) {
         ++i;
     }
 
-    free(temp_numeros);
+    numeros[tamanho - 1] = ultimo;
 
-    if (i < tamanho) {
-        printf("Busca Sentinela: Índice %d\n", i);
+    if (i < tamanho - 1 || numeros[tamanho - 1] == alvo) {
+        *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+        return i;
     } else {
-        printf("Busca Sentinela: Elemento não encontrado\n");
+        *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+        return -1;
     }
 }
 
-void busca_binaria(int *numeros, int tamanho, int alvo) {
-    clock_t tempo_inicial = clock();
-
-    // Ordena o array para busca binária
-    for (int i = 0; i < tamanho - 1; ++i) {
-        for (int j = 0; j < tamanho - i - 1; ++j) {
-            if (numeros[j] > numeros[j + 1]) {
-                // troca numeros[j] e numeros[j+1]
-                int temp = numeros[j];
-                numeros[j] = numeros[j + 1];
-                numeros[j + 1] = temp;
-            }
-        }
-    }
-
+int buscaBinaria(const int *numeros, int tamanho, int alvo, double *duracao) {
+    clock_t inicio = clock();
     int baixo = 0, alto = tamanho - 1;
+
     while (baixo <= alto) {
-        int meio = (baixo + alto) / 2;
+        int meio = baixo + (alto - baixo) / 2;
         if (numeros[meio] == alvo) {
-            clock_t tempo_final = clock();
-            printf("Busca Binária: Índice %d - Tempo decorrido: %f segundos\n", meio, (double)(tempo_final - tempo_inicial) / CLOCKS_PER_SEC);
-            return;
+            *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+            return meio;
         } else if (numeros[meio] < alvo) {
             baixo = meio + 1;
         } else {
@@ -91,85 +66,91 @@ void busca_binaria(int *numeros, int tamanho, int alvo) {
         }
     }
 
-    printf("Busca Binária: Elemento não encontrado\n");
+    *duracao = ((double)(clock() - inicio)) / CLOCKS_PER_SEC;
+    return -1;
 }
 
-void imprimir_array(const int *numeros, int tamanho) {
-    for (int i = 0; i < tamanho; ++i) {
-        printf("%d ", numeros[i]);
-    }
-    printf("\n");
+int compare(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
 }
 
 int main() {
-    const char *nome_arquivo = "numeros_aleatorios.txt";
+    const char *nomeArquivo = "numeros_aleatorios.txt";
     int quantidade;
-
-    printf("Digite a quantidade de números aleatórios a serem gerados: ");
+    printf("Informe a quantidade de números a serem gerados: ");
     scanf("%d", &quantidade);
 
-    gerar_numeros_aleatorios(nome_arquivo, quantidade);
+    gerarNumerosAleatorios(nomeArquivo, quantidade);
 
-    FILE *arquivo = fopen(nome_arquivo, "r");
-    if (arquivo == NULL) {
+    FILE *arquivo = fopen(nomeArquivo, "r");
+    if (!arquivo) {
         perror("Erro ao abrir o arquivo");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     int *numeros = malloc(quantidade * sizeof(int));
-    if (numeros == NULL) {
-        perror("Erro de alocação de memória");
-        fclose(arquivo);
-        exit(EXIT_FAILURE);
-    }
-    
     for (int i = 0; i < quantidade; ++i) {
         fscanf(arquivo, "%d", &numeros[i]);
     }
-
     fclose(arquivo);
 
-    int escolha, alvo;
+    int alvo;
+    int posicao;
+    double duracao;
 
-    while (1) {
-        printf("\nMenu:\n");
-        printf("1. Busca Linear\n");
-        printf("2. Busca Sentinela\n");
-        printf("3. Busca Binária\n");
-        printf("4. Sair\n");
+    int opcao;
+    printf("Escolha o tipo de busca:\n");
+    printf("1. Busca Linear\n");
+    printf("2. Busca Sentinela\n");
+    printf("3. Busca Binária\n");
+    scanf("%d", &opcao);
 
-        printf("Digite sua escolha: ");
-        scanf("%d", &escolha);
-
-        switch (escolha) {
-            case 1:
-                printf("Digite o número a ser buscado: ");
-                scanf("%d", &alvo);
-                busca_linear(numeros, quantidade, alvo);
-                break;
-
-            case 2:
-                printf("Digite o número a ser buscado: ");
-                scanf("%d", &alvo);
-                busca_sentinela(numeros, quantidade, alvo);
-                break;
-
-            case 3:
-                printf("Digite o número a ser buscado: ");
-                scanf("%d", &alvo);
-                busca_binaria(numeros, quantidade, alvo);
-                break;
-
-            case 4:
-                free(numeros);
-                return 0;
-
-            default:
-                printf("Escolha inválida. Por favor, tente novamente.\n");
-        }
+    switch (opcao) {
+        case 1:
+            // Teste de busca linear
+            printf("Informe o número a ser buscado: ");
+            scanf("%d", &alvo);
+            posicao = buscaLinear(numeros, quantidade, alvo, &duracao);
+            if (posicao != -1) {
+                printf("Número encontrado na posição %d (busca linear). Tempo = %lf segundos\n", posicao, duracao);
+            } else {
+                printf("Número não encontrado (busca linear). Tempo = %lf segundos\n", duracao);
+            }
+            break;
+        case 2:
+            // Teste de busca sentinela
+            printf("Informe o número a ser buscado: ");
+            scanf("%d", &alvo);
+            posicao = buscaSentinela(numeros, quantidade, alvo, &duracao);
+            if (posicao != -1) {
+                printf("Número encontrado na posição %d (busca sentinela). Tempo = %lf segundos\n", posicao, duracao);
+            } else {
+                printf("Número não encontrado (busca sentinela). Tempo = %lf segundos\n", duracao);
+            }
+            break;
+        case 3:
+            // Teste de busca binária
+            printf("Informe o número a ser buscado: ");
+            scanf("%d", &alvo);
+            int *numerosOrdenados = malloc(quantidade * sizeof(int));
+            for (int i = 0; i < quantidade; ++i) {
+                numerosOrdenados[i] = numeros[i];
+            }
+            qsort(numerosOrdenados, quantidade, sizeof(int), compare);
+            posicao = buscaBinaria(numerosOrdenados, quantidade, alvo, &duracao);
+            if (posicao != -1) {
+                printf("Número encontrado na posição %d (busca binária). Tempo = %lf segundos\n", posicao, duracao);
+            } else {
+                printf("Número não encontrado (busca binária). Tempo = %lf segundos\n", duracao);
+            }
+            free(numerosOrdenados);
+            break;
+        default:
+            printf("Opção inválida.\n");
+            break;
     }
 
     free(numeros);
-    return 0;
-}
 
+    return EXIT_SUCCESS;
+}
